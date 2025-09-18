@@ -1,182 +1,212 @@
 /**
- * Auth Controller - Professional Refactor
- * Features: Input validation, centralized error handling, JWT, secure password reset, standardized responses
+ * Auth Controller - Unified Registration, Confirmation, Login, and Password Reset
+ * Features:
+ * - Registration with confirmation code (email verification)
+ * - Resend confirmation code if not verified
+ * - Block registration if already verified
+ * - Password reset with code
+ * - Standardized responses
  */
 
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
-const referralController = require("./referralController");
 
-const JWT_SECRET = process.env.JWT_SECRET || "REPLACE_THIS_WITH_A_REAL_SECRET";
+const JWT_SECRET = process.env.JWT_SECRET || "changeme";
 
-// --- Helper: Standardized Success/Error Responses ---
-function success(data, msg = "Success") {
-  return { success: true, msg, data };
-}
-function error(msg, code = 400) {
-  return { success: false, error: msg, code };
+// Helper: Generate random 6-digit code
+function randomCode() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Registration (random username)
+// Helper: Send confirmation code email
+async function sendConfirmationCode(email, code) {
+  // Replace with your email sending logic
+  // Example: using Nodemailer
+  const transporter = nodemailer.createTransport({
+    host: process.env.MAIL_HOST || "smtp.mailtrap.io",
+    port: process.env.MAIL_PORT || 2525,
+    auth: {
+      user: process.env.MAIL_USER || "user",
+      pass: process.env.MAIL_PASS || "pass",
+    },
+  });
+
+  await transporter.sendMail({
+    to: email,
+    subject: "Your Aexon Exchange confirmation code",
+    text: `Your confirmation code is: ${code}`,
+    html: `<p>Your confirmation code is: <b>${code}</b></p>`,
+  });
+}
+
+// --- Registration ---
 exports.register = async (req, res) => {
   try {
     const { email, password, referralCode } = req.body;
-    if (!email || !password)
-      return res.status(400).json(error("Email and password are required"));
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: "Email and password are required." });
+    }
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(400).json(error("Email already registered"));
+    let user = await User.findOne({ email });
 
-    const userReferralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const randomUserName = "aexonuser_" + Math.random().toString(36).substring(2, 8).toLowerCase();
-    const user = await User.create({
+    if (user) {
+      if (!user.emailVerified) {
+        // Email exists but not verified: resend code
+        const code = randomCode();
+        user.verificationCode = code;
+        user.verificationCodeExpires = Date.now() + 15 * 60 * 1000; // 15 min
+        await user.save();
+        await sendConfirmationCode(email, code);
+        return res.status(200).json({
+          success: true,
+          msg: "Verification code resent to your email.",
+          userId: user._id,
+          code: "EMAIL_NOT_VERIFIED",
+        });
+      } else {
+        // Already verified
+        return res.status(400).json({
+          success: false,
+          error: "Email already registered and verified.",
+          code: "EMAIL_ALREADY_REGISTERED",
+        });
+      }
+    }
+
+    // New user registration
+    const code = randomCode();
+    const userData = {
       email,
       password,
-      referralCode: userReferralCode,
-      username: randomUserName,
-    });
-
-    await referralController.handleReferralOnRegister(user._id, referralCode);
-
-    // FIX: Use userId instead of id in JWT payload
-    const token = jwt.sign({ userId: user._id, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
-    res.status(201).json(success({
-      token,
-      user: {
-        userId: user._id, // also use userId here for consistency
-        email: user.email,
-        role: user.role,
-        avatar: user.avatar,
-        referralCode: userReferralCode,
-        username: user.username,
-      },
-    }, "Registration successful"));
-  } catch (err) {
-    if (err.code === 11000) {
-      return res.status(400).json(error("Email already registered"));
+      emailVerified: false,
+      verificationCode: code,
+      verificationCodeExpires: Date.now() + 15 * 60 * 1000, // 15 min
+      username: "aexonuser_" + Math.random().toString(36).substring(2, 8),
+    };
+    if (referralCode && referralCode.trim() !== "") {
+      userData.referralCode = referralCode.trim();
     }
-    res.status(500).json(error("Server error: " + err.message));
+    user = await User.create(userData);
+
+    await sendConfirmationCode(email, code);
+
+    res.json({
+      success: true,
+      msg: "Verification code sent to your email.",
+      userId: user._id,
+    });
+  } catch (e) {
+    console.error("Registration error:", e);
+    if (e.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        error: "Email already registered.",
+        code: "EMAIL_ALREADY_REGISTERED",
+      });
+    }
+    res.status(500).json({ success: false, error: "Registration failed: " + e.message });
   }
 };
 
-// Login
-exports.login = async (req, res) => {
+// --- Confirm Email ---
+exports.confirm = async (req, res) => {
+  const { userId, code } = req.body;
   try {
-    const { email, password } = req.body;
-    if (!email || !password)
-      return res.status(400).json(error("Email and password are required"));
+    const user = await User.findById(userId);
+    if (!user) return res.status(400).json({ success: false, error: "Invalid user." });
+    if (user.emailVerified) return res.status(400).json({ success: false, error: "Already verified." });
+    if (
+      user.verificationCode !== code ||
+      !user.verificationCodeExpires ||
+      user.verificationCodeExpires < Date.now()
+    ) {
+      return res.status(400).json({ success: false, error: "Invalid or expired code." });
+    }
+    user.emailVerified = true;
+    user.verificationCode = undefined;
+    user.verificationCodeExpires = undefined;
+    await user.save();
+    res.json({ success: true, msg: "Email verified. You can now log in." });
+  } catch (e) {
+    console.error("Email confirmation error:", e);
+    res.status(500).json({ success: false, error: "Email confirmation failed: " + e.message });
+  }
+};
 
+// --- Login (only if verified) ---
+exports.login = async (req, res) => {
+  const { email, password } = req.body;
+  try {
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json(error("Invalid credentials"));
-
+    if (!user) return res.status(400).json({ success: false, error: "Invalid credentials." });
     const match = await user.comparePassword(password);
-    if (!match) return res.status(400).json(error("Invalid credentials"));
+    if (!match) return res.status(400).json({ success: false, error: "Invalid credentials." });
 
-    // FIX: Use userId instead of id in JWT payload
-    const token = jwt.sign({ userId: user._id, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
-    res.json(success({
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        success: false,
+        error: "Please verify your email.",
+        code: "EMAIL_NOT_VERIFIED",
+        userId: user._id,
+      });
+    }
+
+    const token = jwt.sign({ userId: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
+    res.json({
+      success: true,
       token,
       user: {
-        userId: user._id, // also use userId here for consistency
         email: user.email,
-        role: user.role,
-        avatar: user.avatar,
-        referralCode: user.referralCode,
+        _id: user._id,
         username: user.username,
       },
-    }, "Login successful"));
+    });
   } catch (err) {
-    res.status(500).json(error("Server error: " + err.message));
+    console.error("Login error:", err);
+    res.status(500).json({ success: false, error: "Server error: " + err.message });
   }
 };
 
-// Update username (User Profile)
-exports.updateUsername = async (req, res) => {
+// --- Forgot Password: send code ---
+exports.forgotPassword = async (req, res) => {
+  const { email } = req.body;
   try {
-    const { username } = req.body;
-    if (!username || username.length < 3)
-      return res.status(400).json(error("Username must be at least 3 characters"));
-
-    const exists = await User.findOne({ username });
-    if (exists) return res.status(400).json(error("Username already taken"));
-
-    // FIX: Use req.user.userId (not req.user.id)
-    const user = await User.findById(req.user.userId);
-    if (!user) return res.status(404).json(error("User not found"));
-    user.username = username;
-    await user.save();
-    res.json(success({ username: user.username }, "Username updated"));
-  } catch (err) {
-    res.status(500).json(error("Server error: " + err.message));
-  }
-};
-
-// Get profile (me)
-exports.me = async (req, res) => {
-  try {
-    // FIX: Use req.user.userId (not req.user.id)
-    const user = await User.findById(req.user.userId).select("-password -resetPasswordToken -resetPasswordExpires");
-    if (!user) return res.status(404).json(error("User not found"));
-    res.json(success(user));
-  } catch (err) {
-    res.status(500).json(error("Server error: " + err.message));
-  }
-};
-
-// Request password reset
-exports.requestPasswordReset = async (req, res) => {
-  try {
-    const { email } = req.body;
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json(error("No user with that email."));
-
-    const token = crypto.randomBytes(32).toString("hex");
-    user.resetPasswordToken = token;
-    user.resetPasswordExpires = Date.now() + 3600000;
+    if (!user) return res.json({ success: true, msg: "If registered, a code will be sent." });
+    const code = randomCode();
+    user.verificationCode = code;
+    user.verificationCodeExpires = Date.now() + 15 * 60 * 1000;
     await user.save();
-
-    const transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST || "smtp.mailtrap.io",
-      port: process.env.MAIL_PORT || 2525,
-      auth: { user: process.env.MAIL_USER || "your_user", pass: process.env.MAIL_PASS || "your_pass" },
-    });
-
-    const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/reset-password/${token}`;
-    await transporter.sendMail({
-      to: user.email,
-      subject: "Password Reset",
-      text: `Reset your password by clicking this link: ${resetUrl}`,
-      html: `<p>Reset your password by clicking <a href="${resetUrl}">this link</a></p>`,
-    });
-
-    res.json(success({}, "Reset link sent to your email."));
+    await sendConfirmationCode(email, code); // Reuse confirmation code sender
+    res.json({ success: true, msg: "If registered, a code will be sent." });
   } catch (err) {
-    res.status(500).json(error("Server error: " + err.message));
+    console.error("Forgot password error:", err);
+    res.status(500).json({ success: false, error: "Failed to send password reset code." });
   }
 };
 
-// Reset password
+// --- Reset Password With Code ---
 exports.resetPassword = async (req, res) => {
+  const { email, code, newPassword } = req.body;
   try {
-    const { token } = req.params;
-    const { password } = req.body;
-    if (!password) return res.status(400).json(error("Password required."));
-    const user = await User.findOne({
-      resetPasswordToken: token,
-      resetPasswordExpires: { $gt: Date.now() },
-    });
-    if (!user) return res.status(400).json(error("Invalid or expired token."));
-
-    user.password = password;
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ success: false, error: "Invalid email." });
+    if (
+      user.verificationCode !== code ||
+      !user.verificationCodeExpires ||
+      user.verificationCodeExpires < Date.now()
+    ) {
+      return res.status(400).json({ success: false, error: "Invalid or expired code." });
+    }
+    user.password = newPassword;
+    user.verificationCode = undefined;
+    user.verificationCodeExpires = undefined;
     await user.save();
-
-    res.json(success({}, "Password has been reset."));
+    res.json({ success: true, msg: "Password reset. You can now log in." });
   } catch (err) {
-    res.status(500).json(error("Server error: " + err.message));
+    console.error("Reset password error:", err);
+    res.status(500).json({ success: false, error: "Failed to reset password." });
   }
 };

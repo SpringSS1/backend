@@ -1,6 +1,15 @@
 /**
- * Auth Routes - Premium Professional Refactor
+ * Auth Routes - Premium Professional Refactor (Fully Fixed & Updated)
+ * Features:
+ * - Registration with confirmation code (email verification)
+ * - Resend confirmation code if not verified
+ * - Block registration if already verified
+ * - Email confirmation
+ * - Login (only if email verified)
+ * - Forgot password (send reset code)
+ * - Reset password with code
  */
+
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
@@ -27,9 +36,8 @@ router.post("/register", async (req, res) => {
       if (!user.emailVerified) {
         // Resend code
         const code = randomCode();
-        const codeExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 min
         user.verificationCode = code;
-        user.verificationCodeExpires = codeExpires;
+        user.verificationCodeExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
         await user.save();
         await sendConfirmationCode(email, code);
         return res.status(200).json({
@@ -39,7 +47,11 @@ router.post("/register", async (req, res) => {
           code: "EMAIL_NOT_VERIFIED",
         });
       } else {
-        return res.status(400).json({ success: false, error: "Email already registered.", code: "EMAIL_ALREADY_REGISTERED" });
+        return res.status(400).json({
+          success: false,
+          error: "Email already registered and verified.",
+          code: "EMAIL_ALREADY_REGISTERED"
+        });
       }
     }
 
@@ -49,26 +61,33 @@ router.post("/register", async (req, res) => {
       password,
       emailVerified: false,
       verificationCode: null,
-      verificationCodeExpires: null
+      verificationCodeExpires: null,
+      username: "aexonuser_" + Math.random().toString(36).substring(2, 8).toLowerCase(),
+      referralCode: referralCode && referralCode.trim() !== "" ? referralCode.trim() : undefined
     };
-    if (referralCode && referralCode.trim() !== "") {
-      userData.referralCode = referralCode.trim();
-    }
 
     // Generate and set code
     const code = randomCode();
-    const codeExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+    const codeExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
     userData.verificationCode = code;
     userData.verificationCodeExpires = codeExpires;
 
     user = await User.create(userData);
     await sendConfirmationCode(email, code);
-    res.json({ success: true, msg: "Verification code sent to your email.", userId: user._id });
+    res.json({
+      success: true,
+      msg: "Verification code sent to your email.",
+      userId: user._id
+    });
   } catch (e) {
     console.error("Registration error:", e);
     // Duplicate key error for unique fields (Mongo error code 11000)
     if (e.code === 11000) {
-      return res.status(400).json({ success: false, error: "Email already registered.", code: "EMAIL_ALREADY_REGISTERED" });
+      return res.status(400).json({
+        success: false,
+        error: "Email already registered.",
+        code: "EMAIL_ALREADY_REGISTERED"
+      });
     }
     res.status(500).json({ success: false, error: "Registration failed: " + e.message });
   }
@@ -109,11 +128,24 @@ router.post("/login", async (req, res) => {
     if (!match) return res.status(400).json({ success: false, error: "Invalid credentials." });
 
     if (!user.emailVerified) {
-      return res.status(403).json({ success: false, error: "Please verify your email.", code: "EMAIL_NOT_VERIFIED", userId: user._id });
+      return res.status(403).json({
+        success: false,
+        error: "Please verify your email.",
+        code: "EMAIL_NOT_VERIFIED",
+        userId: user._id
+      });
     }
 
     const token = jwt.sign({ userId: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
-    res.json({ success: true, token, user: { email: user.email, _id: user._id } });
+    res.json({
+      success: true,
+      token,
+      user: {
+        email: user.email,
+        _id: user._id,
+        username: user.username
+      }
+    });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ success: false, error: "Server error: " + err.message });
@@ -128,7 +160,7 @@ router.post("/forgot-password", async (req, res) => {
     if (!user) return res.json({ success: true, msg: "If registered, a code will be sent." });
     const code = randomCode();
     user.verificationCode = code;
-    user.verificationCodeExpires = new Date(Date.now() + 15 * 60 * 1000);
+    user.verificationCodeExpires = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
     await sendPasswordResetCode(email, code);
     res.json({ success: true, msg: "If registered, a code will be sent." });
