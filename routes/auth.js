@@ -37,7 +37,7 @@ router.post("/register", async (req, res) => {
         // Resend code
         const code = randomCode();
         user.verificationCode = code;
-        user.verificationCodeExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+        user.verificationCodeExpires = Date.now() + 10 * 60 * 1000; // 10 min as timestamp
         await user.save();
         await sendConfirmationCode(email, code);
         return res.status(200).json({
@@ -68,7 +68,7 @@ router.post("/register", async (req, res) => {
 
     // Generate and set code
     const code = randomCode();
-    const codeExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+    const codeExpires = Date.now() + 10 * 60 * 1000; // 10 min as timestamp
     userData.verificationCode = code;
     userData.verificationCodeExpires = codeExpires;
 
@@ -160,7 +160,7 @@ router.post("/forgot-password", async (req, res) => {
     if (!user) return res.json({ success: true, msg: "If registered, a code will be sent." });
     const code = randomCode();
     user.verificationCode = code;
-    user.verificationCodeExpires = new Date(Date.now() + 10 * 60 * 1000);
+    user.verificationCodeExpires = Date.now() + 10 * 60 * 1000;
     await user.save();
     await sendPasswordResetCode(email, code);
     res.json({ success: true, msg: "If registered, a code will be sent." });

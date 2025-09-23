@@ -56,7 +56,7 @@ exports.register = async (req, res) => {
         // Email exists but not verified: resend code
         const code = randomCode();
         user.verificationCode = code;
-        user.verificationCodeExpires = Date.now() + 15 * 60 * 1000; // 15 min
+        user.verificationCodeExpires = Date.now() + 15 * 60 * 1000; // 15 min as timestamp
         await user.save();
         await sendConfirmationCode(email, code);
         return res.status(200).json({
@@ -82,7 +82,7 @@ exports.register = async (req, res) => {
       password,
       emailVerified: false,
       verificationCode: code,
-      verificationCodeExpires: Date.now() + 15 * 60 * 1000, // 15 min
+      verificationCodeExpires: Date.now() + 15 * 60 * 1000, // 15 min as timestamp
       username: "aexonuser_" + Math.random().toString(36).substring(2, 8),
     };
     if (referralCode && referralCode.trim() !== "") {
@@ -177,7 +177,7 @@ exports.forgotPassword = async (req, res) => {
     if (!user) return res.json({ success: true, msg: "If registered, a code will be sent." });
     const code = randomCode();
     user.verificationCode = code;
-    user.verificationCodeExpires = Date.now() + 15 * 60 * 1000;
+    user.verificationCodeExpires = Date.now() + 15 * 60 * 1000; // 15 min as timestamp
     await user.save();
     await sendConfirmationCode(email, code); // Reuse confirmation code sender
     res.json({ success: true, msg: "If registered, a code will be sent." });
