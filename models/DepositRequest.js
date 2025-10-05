@@ -1,3 +1,6 @@
+/**
+ * DepositRequest Model - Premium Refactor
+ */
 const mongoose = require('mongoose');
 
 const depositRequestSchema = new mongoose.Schema({
@@ -7,8 +10,7 @@ const depositRequestSchema = new mongoose.Schema({
   address: { type: String },
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
   reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  createdAt: { type: Date, default: Date.now },
   reviewedAt: { type: Date }
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model('DepositRequest', depositRequestSchema);

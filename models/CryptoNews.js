@@ -1,5 +1,5 @@
 /**
- * CryptoNews Model
+ * CryptoNews Model - Premium Refactor
  */
 const mongoose = require("mongoose");
 

@@ -2,7 +2,6 @@
  * Finance Controller - Professional Refactor
  * Features: Input validation, standardized response, clean structure
  */
-
 const DepositRequest = require("../models/DepositRequest");
 const WithdrawRequest = require("../models/WithdrawRequest");
 
@@ -10,7 +9,8 @@ const WithdrawRequest = require("../models/WithdrawRequest");
 exports.requestDeposit = async (req, res) => {
   try {
     const { coin, amount, address } = req.body;
-    if (!coin || !amount || !address) return res.status(400).json({ success: false, error: "Missing fields" });
+    if (!coin || !amount || !address) 
+      return res.status(400).json({ success: false, error: "Missing fields" });
     const reqDoc = new DepositRequest({
       user: req.user.id,
       coin,
@@ -28,7 +28,8 @@ exports.requestDeposit = async (req, res) => {
 exports.requestWithdraw = async (req, res) => {
   try {
     const { coin, amount, address } = req.body;
-    if (!coin || !amount || !address) return res.status(400).json({ success: false, error: "Missing fields" });
+    if (!coin || !amount || !address) 
+      return res.status(400).json({ success: false, error: "Missing fields" });
     const reqDoc = new WithdrawRequest({
       user: req.user.id,
       coin,

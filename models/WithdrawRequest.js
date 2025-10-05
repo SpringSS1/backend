@@ -1,7 +1,6 @@
 /**
  * WithdrawRequest Model - Premium Refactor
  */
-
 const mongoose = require("mongoose");
 
 const withdrawRequestSchema = new mongoose.Schema(
@@ -12,7 +11,6 @@ const withdrawRequestSchema = new mongoose.Schema(
     address: { type: String, trim: true },
     status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
     reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    createdAt: { type: Date, default: Date.now },
     reviewedAt: { type: Date },
   },
   { timestamps: true }

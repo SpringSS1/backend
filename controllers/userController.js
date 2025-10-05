@@ -1,7 +1,6 @@
 /**
  * User Controller - FIX JWT 'userId' bug and always use 'id'
  */
-
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 
@@ -9,9 +8,8 @@ const JWT_SECRET = process.env.JWT_SECRET || "yourverysecurejwtsecret";
 
 // Utility: always sign token with 'id' as string (NOT 'userId')
 function generateToken(user) {
-  // This ensures the payload has 'id', NOT 'userId'
   return jwt.sign(
-    { id: user._id.toString(), email: user.email, role: user.role }, // <-- ONLY 'id'!
+    { id: user._id.toString(), email: user.email, role: user.role },
     JWT_SECRET,
     { expiresIn: "7d" }
   );

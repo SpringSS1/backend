@@ -1,7 +1,6 @@
 /**
  * AuditLog Model - Premium Refactor
  */
-
 const mongoose = require("mongoose");
 
 const auditLogSchema = new mongoose.Schema(
@@ -13,7 +12,6 @@ const auditLogSchema = new mongoose.Schema(
     details: { type: Object },
     ip: { type: String },
     note: { type: String },
-    timestamp: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );

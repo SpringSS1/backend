@@ -2,7 +2,6 @@
  * Futures Controller - Professional Refactor
  * Features: Input validation, live price fetch, standardized responses
  */
-
 const FuturesPosition = require("../models/FuturesPosition");
 const User = require("../models/User");
 const axios = require("axios");

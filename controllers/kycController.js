@@ -2,7 +2,6 @@
  * KYC Controller - Professional Refactor
  * Features: Input validation, standardized responses
  */
-
 const User = require("../models/User");
 
 // User submits KYC

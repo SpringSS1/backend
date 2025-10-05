@@ -1,6 +1,5 @@
 /**
  * Coin Model - Premium Refactor
- * (Used only if storing custom coins in MongoDB, not for live prices)
  */
 const mongoose = require("mongoose");
 

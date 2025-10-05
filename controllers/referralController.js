@@ -1,7 +1,6 @@
 /**
  * Referral Controller - Professional Refactor
  */
-
 const Referral = require("../models/Referral");
 const User = require("../models/User");
 

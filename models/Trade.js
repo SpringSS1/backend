@@ -1,7 +1,6 @@
 /**
  * Trade Model - Premium Refactor
  */
-
 const mongoose = require("mongoose");
 
 const tradeSchema = new mongoose.Schema(
@@ -12,7 +11,6 @@ const tradeSchema = new mongoose.Schema(
     amount: { type: Number, required: true, min: 0 },
     price: { type: Number, required: true, min: 0 },
     status: { type: String, enum: ["open", "closed"], default: "open" },
-    createdAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );

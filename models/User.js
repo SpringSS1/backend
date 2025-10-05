@@ -1,7 +1,6 @@
 /**
  * User Model - Premium Refactor
  */
-
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 

@@ -1,7 +1,6 @@
 /**
  * Audit Logger Middleware - Professional Refactor
  */
-
 const AuditLog = require("../models/AuditLog");
 
 // Log admin actions for audit trail

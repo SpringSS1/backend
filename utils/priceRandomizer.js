@@ -2,7 +2,6 @@
  * Coin Price Randomizer Utility - Premium Professional Refactor
  * Randomly adjusts prices for all coins (±5%) for market simulation.
  */
-
 const Coin = require('../models/Coin');
 
 /**

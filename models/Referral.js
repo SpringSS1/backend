@@ -1,7 +1,6 @@
 /**
  * Referral Model - Premium Refactor
  */
-
 const mongoose = require("mongoose");
 
 const referralSchema = new mongoose.Schema(

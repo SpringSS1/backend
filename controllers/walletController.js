@@ -2,7 +2,6 @@
  * Wallet Controller - Professional Refactor
  * Features: Filtering, pagination, standardized responses
  */
-
 const User = require("../models/User");
 const DepositRequest = require("../models/DepositRequest");
 const WithdrawRequest = require("../models/WithdrawRequest");

@@ -2,7 +2,6 @@
  * Trade Controller - Professional Refactor
  * Features: Input validation, standardized response, clean structure
  */
-
 const Trade = require("../models/Trade");
 const Coin = require("../models/Coin");
 const User = require("../models/User");
@@ -59,7 +58,6 @@ exports.placeTrade = async (req, res) => {
       amount,
       price,
       status: "closed",
-      createdAt: new Date(),
     });
 
     res.status(201).json({ success: true, msg: "Trade executed", data: trade });

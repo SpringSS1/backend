@@ -5,10 +5,12 @@
 
 const nodemailer = require('nodemailer');
 
+// Support both SSL (465) and TLS/STARTTLS (587)
+const port = parseInt(process.env.SMTP_PORT, 10);
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT, 10),
-  secure: parseInt(process.env.SMTP_PORT, 10) === 465, // true for 465, false for others
+  port,
+  secure: port === 465, // true for 465 (SSL), false for 587 (TLS)
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
@@ -31,8 +33,9 @@ exports.sendConfirmationCode = async (to, code) => {
     console.log(`Message sent: ${info.messageId} to ${to}`);
     return info;
   } catch (err) {
+    // Print full error for diagnosis
     console.error("Failed to send confirmation code:", err);
-    throw new Error("Failed to send confirmation email.");
+    throw new Error("Failed to send confirmation email: " + err.message);
   }
 };
 
@@ -53,6 +56,6 @@ exports.sendPasswordResetCode = async (to, code) => {
     return info;
   } catch (err) {
     console.error("Failed to send password reset code:", err);
-    throw new Error("Failed to send password reset email.");
+    throw new Error("Failed to send password reset email: " + err.message);
   }
 };

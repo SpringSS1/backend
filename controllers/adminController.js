@@ -2,8 +2,6 @@
  * Admin Controller - Professional Refactor
  * Features: Input validation, standardized responses, security, clean structure
  */
-
-const { body, param, validationResult } = require("express-validator");
 const User = require("../models/User");
 const Coin = require("../models/Coin");
 const DepositRequest = require("../models/DepositRequest");
@@ -46,10 +44,7 @@ exports.reviewKyc = async (req, res) => {
   if (!checkNotBanned(req, res)) return;
   try {
     const { userId, status, remark } = req.body;
-    if (
-      !userId ||
-      !["pending", "approved", "rejected"].includes(status)
-    ) {
+    if (!userId || !["pending", "approved", "rejected"].includes(status)) {
       return res.status(400).json(error("Invalid KYC status or userId."));
     }
     const user = await User.findById(userId);

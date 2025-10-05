@@ -2,18 +2,19 @@
  * Chat Controller - Professional Refactor
  * Features: Input validation, standardized response, clean structure
  */
-
 const ChatMessage = require("../models/ChatMessage");
-const User = require("../models/User");
 
 // Get all chat messages (latest 50)
 exports.getMessages = async (req, res) => {
   try {
-    const messages = await ChatMessage.find().sort({ createdAt: -1 }).limit(50).populate("user", "email role");
+    const messages = await ChatMessage.find()
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate("user", "email role");
     res.json({
       success: true,
       msg: "Fetched chat messages",
-      data: messages.reverse(),
+      data: messages.reverse(), // oldest first
     });
   } catch (error) {
     res.status(500).json({

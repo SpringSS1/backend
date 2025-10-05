@@ -2,7 +2,6 @@
  * Audit Log Utility - Premium Professional Refactor
  * Usage: Logs an admin action for audit trail.
  */
-
 const AuditLog = require('../models/AuditLog');
 
 /**

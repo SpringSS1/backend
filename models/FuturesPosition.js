@@ -1,7 +1,6 @@
 /**
  * FuturesPosition Model - Premium Refactor
  */
-
 const mongoose = require("mongoose");
 
 const futuresPositionSchema = new mongoose.Schema(
@@ -17,7 +16,6 @@ const futuresPositionSchema = new mongoose.Schema(
     status: { type: String, enum: ["open", "closed"], default: "open" },
     closedPrice: { type: Number },
     pnl: { type: Number },
-    createdAt: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );

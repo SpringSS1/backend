@@ -40,4 +40,4 @@ exports.getCoins = async (req, res) => {
       data: [],
     });
   }
-};    
+};
