@@ -1,12 +1,20 @@
 /**
- * Email Utility - Premium Professional Refactor
+ * Email Utility - Premium Professional Refactor (with extra debugging)
  * Handles confirmation and password reset emails using SMTP.
  */
 
 const nodemailer = require('nodemailer');
 
-// Support both SSL (465) and TLS/STARTTLS (587)
 const port = parseInt(process.env.SMTP_PORT, 10);
+
+console.log("Nodemailer config:", {
+  host: process.env.SMTP_HOST,
+  port: port,
+  user: process.env.SMTP_USER,
+  pass: process.env.SMTP_PASS ? "********" : "MISSING",
+  secure: port === 465,
+});
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port,
@@ -14,7 +22,9 @@ const transporter = nodemailer.createTransport({
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
-  }
+  },
+  logger: true, // adds logging
+  debug: true   // enables debug output
 });
 
 /**
