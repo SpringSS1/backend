@@ -1,41 +1,20 @@
 /**
- * adminController.js
- *
- * Admin endpoints implemented against the exact models you provided:
- * - User (backend/models/User.js) - provided by you
- * - Coin (backend/models/Coin.js) - provided by you
- * - Trade (backend/models/Trade.js) - provided by you
- * - Wallet (backend/models/Wallet.js) - added in this package
- * - AuditLog (backend/models/AuditLog.js) - added
- * - Setting (backend/models/Setting.js) - added
- *
- * Endpoints:
- *  - GET  /admin/summary
- *  - GET  /admin/users
- *  - POST /admin/user/:id/action
- *  - POST /admin/user/:id/adjust-balance
- *  - GET  /admin/wallets
- *  - POST /admin/wallets/:id/approve
- *  - POST /admin/wallets/:id/reject
- *  - GET  /admin/trades
- *  - POST /admin/trades/:id/cancel
- *  - POST /admin/broadcast
- *  - POST /admin/price_override
- *  - GET  /admin/logs
- *  - GET  /admin/settings
- *  - POST /admin/settings
+ * Admin endpoints - extended for full integrity, management, and deployment readiness.
+ * Includes all verification, ban/unban, promote/demote, user/wallet/trade management, price/broadcast, logging, settings.
  */
 const path = require('path');
 const fs = require('fs');
 const { broadcast } = require('../utils/broadcaster');
 
-// Models (exact paths/names)
+// Models
 const User = require('../models/User');
 const Coin = require('../models/Coin');
 const Trade = require('../models/Trade');
 const Wallet = require('../models/Wallet');
 const AuditLog = require('../models/AuditLog');
 const Setting = require('../models/Setting');
+const DepositRequest = require("../models/DepositRequest");
+const WithdrawRequest = require("../models/WithdrawRequest");
 
 async function createAudit(action, actorId, details = {}) {
   try {
@@ -72,7 +51,6 @@ module.exports = {
         filter.$or = [{ username: regex }, { email: regex }, { _id: regex }];
       }
       const users = await User.find(filter).limit(500).lean();
-      // Normalize wallet summary (use User.wallets embedded in user model)
       const normalized = users.map(u => {
         const wallets = Array.isArray(u.wallets) ? u.wallets : [];
         const balanceSummary = wallets.slice(0, 5).map(w => `${w.coin}:${w.balance}`).join(', ');
@@ -123,14 +101,12 @@ module.exports = {
       const { coin, delta, reason } = req.body;
       if (!id || !coin || typeof delta === "undefined") return res.status(400).json({ error: "Missing params" });
 
-      // Adjust balance within User.wallets embedded array.
       const user = await User.findById(id);
       if (!user) return res.status(404).json({ error: "User not found" });
 
       const uppercaseCoin = String(coin).toUpperCase();
       let found = (user.wallets || []).find(w => w.coin === uppercaseCoin);
       if (!found) {
-        // push new wallet entry
         user.wallets = user.wallets || [];
         user.wallets.push({ coin: uppercaseCoin, balance: Number(delta) });
       } else {
@@ -139,7 +115,6 @@ module.exports = {
       }
       await user.save();
 
-      // also record a Wallet ledger entry for admin traceability
       await Wallet.create({
         user: user._id,
         coin: uppercaseCoin,
@@ -149,7 +124,7 @@ module.exports = {
         status: 'approved',
         processedBy: req.user && req.user._id,
         processedAt: new Date()
-      }).catch(() => { /* non-fatal */ });
+      }).catch(() => {});
 
       await createAudit("user:adjust_balance", req.user && req.user._id, { target: id, coin: uppercaseCoin, delta, reason });
 
@@ -286,7 +261,6 @@ module.exports = {
       if (body.type === "price_update") {
         const { symbol, price } = body.payload;
         if (!symbol || typeof price === "undefined") return res.status(400).json({ error: "price_update requires symbol and price" });
-        // update Coin model if available
         await Coin.findOneAndUpdate({ symbol: String(symbol).toUpperCase() }, { $set: { price: Number(price), lastPriceUpdate: new Date() } }, { upsert: true });
       }
 
@@ -328,7 +302,6 @@ module.exports = {
   // GET /admin/logs
   async getLogs(req, res) {
     try {
-      // Prefer AuditLog model
       const tail = req.query.tail === 'true';
       if (AuditLog) {
         const rows = await AuditLog.find({}).sort({ createdAt: -1 }).limit(tail ? 1000 : 200).lean();
@@ -336,7 +309,6 @@ module.exports = {
         return res.send(text);
       }
 
-      // fallback to reading logs/server.log if exists
       const logPath = path.resolve(process.cwd(), 'logs', 'server.log');
       if (fs.existsSync(logPath)) {
         const content = fs.readFileSync(logPath, 'utf8');

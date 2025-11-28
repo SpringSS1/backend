@@ -1,5 +1,5 @@
 /**
- * User Model - Premium Refactor
+ * User Model - Modern, always unique referralCode, default avatar, lowercased
  */
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
@@ -17,11 +17,20 @@ const kycSchema = new mongoose.Schema(
   {
     status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
     documentUrl: { type: String, trim: true },
+    backDocumentUrl: { type: String, trim: true },
     submittedAt: { type: Date },
     error: { type: String, trim: true },
   },
   { _id: false }
 );
+
+function makeReferralCode() {
+  return (
+    "AEX" +
+    Math.random().toString(36).slice(2, 8).toUpperCase() +
+    Date.now().toString().slice(-4)
+  );
+}
 
 const userSchema = new mongoose.Schema(
   {
@@ -47,8 +56,15 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password, 10);
+  if (this.isModified("password")) {
+    this.password = await bcrypt.hash(this.password, 10);
+  }
+  if (!this.referralCode || this.referralCode === "") {
+    this.referralCode = makeReferralCode();
+  }
+  if (!this.avatar) {
+    this.avatar = "/assets/avatars/default.png";
+  }
   next();
 });
 

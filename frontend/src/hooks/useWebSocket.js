@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /**
  * Reconnecting WebSocket hook with optional polling fallback.
  *
@@ -57,14 +58,13 @@ export default function useWebSocket({
     setStatus("fallback");
     pollingRef.current = setInterval(async () => {
       try {
-        // lightweight price fetch - prefer backend endpoint /api/coin
         const res = await api.get("/coin");
         const payload = res?.data?.data ?? res?.data;
         const msg = { type: "poll_prices", payload, timestamp: Date.now() };
         lastMessageRef.current = msg;
         onMessage(msg);
       } catch (err) {
-        // ignore individual polling errors
+        // ignore polling errors
       }
     }, pollInterval);
     // run initial poll immediately
@@ -121,7 +121,6 @@ export default function useWebSocket({
           lastMessageRef.current = data;
           onMessage(data);
         } catch (e) {
-          // if not JSON, pass raw
           lastMessageRef.current = evt.data;
           onMessage({ type: "raw", payload: evt.data });
         }
@@ -144,7 +143,6 @@ export default function useWebSocket({
         }, delay);
       };
     } catch (e) {
-      // if WS creation fails (e.g., blocked on host), fallback to polling
       setStatus("error");
       startPolling();
     }
@@ -153,14 +151,13 @@ export default function useWebSocket({
   useEffect(() => {
     connect();
     return () => {
-      // cleanup
       clearReconnect();
       if (wsRef.current) {
         try { wsRef.current.close(); } catch {}
       }
       stopPolling();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line
   }, [enabled]);
 
   return {

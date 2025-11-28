@@ -1,10 +1,12 @@
 /**
- * Referral Routes - Premium Professional Refactor
+ * Referral Routes - claim endpoint with validation and rate limit
  */
 const router = require("express").Router();
 const { protect } = require("../middlewares/auth");
-const { getMyReferrals } = require("../controllers/referralController");
+const { claimReferral } = require("../controllers/referralController");
+const { validateReferralClaim } = require("../middlewares/validators");
+const { sensitiveLimiter } = require("../middlewares/rateLimit");
 
-router.get("/my", protect, getMyReferrals);
+router.post("/claim", protect, sensitiveLimiter, validateReferralClaim, claimReferral);
 
 module.exports = router;

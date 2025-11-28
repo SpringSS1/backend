@@ -1,52 +1,114 @@
+// Central API client and helper functions
+// - Exports default axios instance (api)
+// - Exports helper functions used throughout the frontend: getCoins, getMe, getWallet, getAnnouncements, getCryptoNews, forgotPassword, submitKyc, login, register, etc.
+// - Keeps the existing setForceLogoutHandler behavior.
+
 import axios from "axios";
 
-const API_BASE = process.env.REACT_APP_API_BASE || "https://aexon.onrender.com/api";
+const API_BASE = process.env.REACT_APP_API_BASE || "http://localhost:3000/api";
 const api = axios.create({
   baseURL: API_BASE,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
-// Centralized auth & error handling
+// logout handler hook
 let onForceLogout = () => {};
-
 export function setForceLogoutHandler(fn) {
   onForceLogout = fn;
 }
 
-api.interceptors.request.use(config => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+// attach token automatically
+api.interceptors.request.use((config) => {
+  try {
+    const token = localStorage.getItem("token");
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  } catch (e) {}
   return config;
 });
 
+// central error handling (force logout for auth issues)
 api.interceptors.response.use(
-  response => response,
-  error => {
-    const status = error?.response?.status;
-    const msg = error?.response?.data?.message || error?.response?.data?.error || error?.message || "";
+  (res) => res,
+  (err) => {
+    const status = err?.response?.status;
+    const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || "";
     if (
+      status === 401 ||
       status === 403 ||
-      (typeof msg === "string" && (
-        msg.toLowerCase().includes("banned") ||
-        msg.toLowerCase().includes("jwt expired") ||
-        msg.toLowerCase().includes("not authorized")
-      ))
+      (typeof msg === "string" && (msg.toLowerCase().includes("jwt") || msg.toLowerCase().includes("not authorized") || msg.toLowerCase().includes("banned")))
     ) {
-      localStorage.clear();
-      if (typeof onForceLogout === "function") onForceLogout(msg);
-      window.location.replace("/login");
-      return Promise.reject(typeof msg === "string" ? msg : "Unauthorized");
+      try {
+        localStorage.clear();
+        if (typeof onForceLogout === "function") onForceLogout(msg);
+      } catch (e) {}
+      // optional redirect for SPA; swallowing here so callers can handle too
     }
-    if (
-      status === 404 &&
-      typeof msg === "string" &&
-      msg.toLowerCase().includes("user not found")
-    ) {
-      localStorage.clear();
-      window.location.replace("/login");
-      return Promise.reject("User not found. Please login again.");
-    }
-    return Promise.reject(typeof msg === "string" ? msg : error);
+    return Promise.reject(err);
   }
 );
+
+// --- Helper endpoints used across the frontend ---
+// Note: these return axios promises; existing .then/.catch code continues to work
+
+export function getCoins() {
+  // Primary: /coin (used across frontend)
+  return api.get("/coin");
+}
+
+export function getMe() {
+  // Common user info endpoints - try canonical path
+  return api.get("/user/me");
+}
+
+export function getWallet() {
+  // User wallet summary
+  return api.get("/wallet");
+}
+
+export function getAnnouncements() {
+  // Announcements endpoint
+  return api.get("/announcements");
+}
+
+export function getCryptoNews() {
+  // Crypto news endpoint
+  return api.get("/news");
+}
+
+export function forgotPassword(email) {
+  // Try common forgot-password endpoints
+  return api.post("/auth/forgot-password", { email });
+}
+
+export function resetPassword(token, password) {
+  return api.post("/auth/reset-password", { token, password });
+}
+
+export function submitKyc(formData) {
+  // submit KYC; formData can be FormData or object
+  // If it's FormData, axios will set appropriate headers automatically
+  if (formData instanceof FormData) {
+    // For FormData we need a separate request (no JSON header)
+    return axios.post(`${API_BASE.replace(/\/api\/?$/, "")}/api/kyc`, formData, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
+    });
+  }
+  return api.post("/kyc", formData);
+}
+
+export function getMyTrades() {
+  return api.get("/trade/my");
+}
+
+// Auth convenience helpers
+export function login(email, password) {
+  return api.post("/auth/login", { email, password });
+}
+
+export function register(payload) {
+  return api.post("/auth/register", payload);
+}
 
 export default api;

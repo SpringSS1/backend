@@ -1,16 +1,23 @@
-/**
- * backend/index.js
- *
- * Lightweight wrapper to start the server (calls server.js).
- *
- * This file makes it easier for deployment platforms that expect index.js as entrypoint.
- * If your current project already has a different start script, you can replace that file content
- * with the code below, or update your package.json "start" script to "node backend/server.js".
- */
+// Location: Aexon/Aexon/backend/index.js
+// Full file — UPDATED to export the Express app and only listen when run directly.
 
-try {
-  require('./server');
-} catch (e) {
-  console.error('Failed to start server:', e && e.stack ? e.stack : e);
-  process.exit(1);
+const express = require('express');
+const app = express();
+
+// --- Your existing middleware/routes should remain here ---
+// Example placeholder route (preserve/merge your real routes)
+app.get('/api/hello', (req, res) => {
+  res.json({ ok: true, message: 'Hello from backend!' });
+});
+
+// Export the app so a production wrapper can mount it without causing double-listen.
+module.exports = app;
+
+// If this file is executed directly (node backend/index.js), start the server.
+// This keeps local dev behavior convenient while avoiding automatic listening when required.
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Backend (dev) listening on port ${PORT}`);
+  });
 }

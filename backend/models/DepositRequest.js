@@ -1,16 +1,21 @@
 /**
- * DepositRequest Model - Premium Refactor
+ * DepositRequest Model - Demo Deposit Workflow
  */
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
+const Schema = mongoose.Schema;
 
-const depositRequestSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  coin: { type: String, required: true },
-  amount: { type: Number, required: true },
-  address: { type: String },
-  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  reviewedAt: { type: Date }
-}, { timestamps: true });
+const depositRequestSchema = new Schema(
+  {
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    coin: { type: String, required: true },
+    amount: { type: Number, required: true, min: 0.00000001 },
+    address: { type: String, required: true },
+    status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
+    note: { type: String, default: "" },
+    reviewedBy: { type: Schema.Types.ObjectId, ref: "User" },
+    reviewedAt: { type: Date },
+    createdAt: { type: Date, default: Date.now }
+  }
+);
 
-module.exports = mongoose.model('DepositRequest', depositRequestSchema);
+module.exports = mongoose.model("DepositRequest", depositRequestSchema);
